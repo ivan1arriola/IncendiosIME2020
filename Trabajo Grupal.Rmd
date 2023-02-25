@@ -1,0 +1,159 @@
+---
+title: "Trabajo Grupal"
+author: "Grupo 4"
+date: "3/10/2021"
+output: html_document
+---
+
+```{r Limpiar ambiente de trabajo, include=FALSE}
+rm(list=ls())
+```
+
+#Librerias usadas
+
+```{r Librerias, echo=TRUE, message=FALSE, warning=FALSE}
+library(readr)
+library(tidyverse)
+library(reshape)
+```
+
+# Importacion de los datos
+
+```{r Importacion de los datos, echo=TRUE, warning=FALSE}
+incendios <- read_csv('http://www.dsi.uminho.pt/~pcortez/forestfires/forestfires.csv')
+```
+# Un vistazo a los datos
+
+```{r Vistazo a los datos, echo=FALSE, warning=TRUE}
+head(incendios) 
+tail(incendios)
+```
+
+```{r Etiquetas para month y day, warning=FALSE, include=FALSE}
+monthlevels <- c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug',
+                 'sep', 'oct', 'nov', 'dec')
+
+monthlabels <- c('Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo','Junio', 'Julio',
+                 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre')
+
+daylevels <- c('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
+
+daylabels <- c('Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo')
+```
+
+# Coercionar caracteres a factor
+
+```{r Coercion de los datos a factor}
+incendios <- incendios %>% mutate ( X = as.factor(X),
+                                    Y = as.factor(Y),
+                                    month = factor(month, levels = monthlevels,
+                                                   labels = monthlabels),
+                                    day = factor(day, levels = daylevels,
+                                                 labels = daylabels)
+                                   )
+
+rm(list = c('daylabels', 'daylevels', 'monthlabels', 'monthlevels')) 
+```
+
+Chequeo que hayan quedado bien
+```{r Vistazo a la estructura ya modificada, echo=TRUE}
+glimpse(incendios)
+```
+
+# Contar NA en incendios
+
+```{r Contar NA en Incendios, echo=TRUE}
+apply(X = is.na(incendios), MARGIN = 2, FUN = sum) 
+```
+No hay datos faltantes
+
+###### Analisis Exploratorio Univariado ##########
+
+
+
+
+# Analisis Exploratorio Multivariado
+
+##Frecuencia absoluta de incendios por mes por dia de la semana
+ Creo un dataframe con las variables mes, dia y cantidad de incendios
+
+```{r Dataframe MesXDia, echo=FALSE}
+
+mesxdia <- incendios %>% {table(.$month, .$day)} %>% melt()
+
+colnames(mesxdia) <- c('mes', 'dia', 'cant')
+
+mesxdia
+```
+# Mapa de calor del dataframe mesxdia
+
+```{r}
+ggplot(data = mesxdia, aes(x=mes, 
+                           y=dia, 
+                           fill=cant)) + 
+  geom_tile(color='black') +
+  scale_fill_gradient(low = "white", high = "red") +
+  guides(fill = guide_colourbar(title = "Cant. de Incendios"))
+```
+
+El grafico parece indicar que la cantidad de incendios varia mucho mas por el 
+mes del anio que por el dia de la semana. Tambien los incendios por dia de la 
+semana varian de igual forma a traves de los meses del anio
+
+# Mapa de los incendios
+
+Ya que X e Y son cordenadas espaciales, hare un mapa para visualizar donde 
+se han concentrado los incendios
+
+Hago la frecuencia absoluta de la caantidad de incendios por ubicacion
+y los pongo en un data frame donde cada fila es una ubicacion
+
+```{r Mapa}
+mapa <- incendios %>% {table(.$X, .$Y)} %>% melt()
+```
+
+La columnas son la coordenada en X, la coordenada en Y y la cantidad de incendios
+```{r Renombrar las columnas de Mapa}
+colnames(mapa) <- c('coordX', 'coordY', 'cant')
+```
+
+Corrijo los tipos de datos del data frame
+```{r coercion a factor}
+mapa <- mapa %>% mutate(coordX = as.factor(coordX),
+                coordY = as.factor(coordY),
+                cant= as.integer(cant))
+mapa
+```
+
+Grafico del 'mapa'
+```{r Grafico de calor de Mapa}
+ggplot(data=mapa, aes(x=coordX, y=coordY, fill=cant)) +  
+  geom_tile(color='black') +
+  scale_fill_gradient(low = "black", high = "red") +
+  guides(fill = guide_colourbar(title = "Cant. de Incendios"))
+```
+
+# Informacion adjunta en el dataset
+
+X - x-axis spatial coordinate within the Montesinho park map: 1 to 9
+Y - y-axis spatial coordinate within the Montesinho park map: 2 to 9
+month - month of the year: "jan" to "dec" 
+day - day of the week: "mon" to "sun"
+FFMC - FFMC index from the FWI system: 18.7 to 96.20
+DMC - DMC index from the FWI system: 1.1 to 291.3 
+DC - DC index from the FWI system: 7.9 to 860.6 
+ISI - ISI index from the FWI system: 0.0 to 56.10
+temp - temperature in Celsius degrees: 2.2 to 33.30
+RH - relative humidity in %: 15.0 to 100
+wind - wind speed in km/h: 0.40 to 9.40 
+rain - outside rain in mm/m2 : 0.0 to 6.4 
+area - the burned area of the forest (in ha): 0.00 to 1090.84
+
+The Fine Fuel Moisture Code (FFMC) represents fuel moisture of forest litter fuels under the shade of a forest canopy. It is intended to represent moisture conditions for shaded litter fuels, the equivalent of 16-hour timelag. It ranges from 0-101. Subtracting the FFMC value from 100 can provide an estimate for the equivalent (approximately 10h) fuel moisture content, most accurate when FFMC values are roughly above 80.
+
+The Duff Moisture Code (DMC) represents fuel moisture of decomposed organic material underneath the litter. System designers suggest that it is represents moisture conditions for the equivalent of 15-day (or 360 hr) timelag fuels. It is unitless and open ended. It may provide insight to live fuel moisture stress.
+
+The Drought Code (DC), much like the Keetch-Byrum Drought Index, represents drying deep into the soil. It approximates moisture conditions for the equivalent of 53-day (1272 hour) timelag fuels. It is unitless, with a maximum value of 1000. Extreme drought conditions have produced DC values near 800.
+
+The Initial Spread Index (ISI) is analogous to the NFDRS Spread Component (SC). It integrates fuel moisture for fine dead fuels and surface windspeed to estimate a spread potential. ISI is a key input for fire behavior predictions in the FBP system. It is unitless and open ended.
+# Fin del adjunto
